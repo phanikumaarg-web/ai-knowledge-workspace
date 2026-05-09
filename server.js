@@ -717,24 +717,33 @@ app.post(
       );
 
       const imagePrompt = `
-Create a premium executive AI business illustration.
+Create a modern minimal AI business illustration for a SaaS product.
 
 Style:
-- modern corporate AI workspace
-- executives collaborating
-- analytics dashboards
-- business charts
-- strategic planning
-- organizational intelligence
-- elegant dark theme
-- green AI accent colors
-- cinematic SaaS product style
+- clean startup aesthetic
+- modern enterprise workspace
+- subtle analytics screens
+- professional executives
+- realistic business environment
+- soft green accent colors
+- elegant UI panels
+- minimal design
+- high-end SaaS landing page artwork
+- flat modern illustration style
 
-The illustration should visually represent this meeting summary:
+Avoid:
+- cyberpunk
+- sci-fi
+- glowing neon
+- fake text
+- overloaded dashboards
+- futuristic control rooms
+
+The illustration should visually represent this business meeting summary:
 
 ${summary}
 
-The output should look like premium AI SaaS marketing artwork, not a dashboard screenshot or infographic.
+The final image should look like a premium SaaS website hero section used by companies like Notion, Stripe, Linear, or OpenAI.
 `;
 
       const response =
