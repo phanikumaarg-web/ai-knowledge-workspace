@@ -717,29 +717,24 @@ app.post(
       );
 
       const imagePrompt = `
-Create a clean professional executive meeting infographic.
+Create a premium executive AI business illustration.
 
 Style:
-- modern corporate presentation
-- premium consulting slide
-- dark elegant theme
-- green accent colors
-- readable typography
-- organized layout
-- realistic charts and diagrams
-- business infographic style
+- modern corporate AI workspace
+- executives collaborating
+- analytics dashboards
+- business charts
+- strategic planning
+- organizational intelligence
+- elegant dark theme
+- green AI accent colors
+- cinematic SaaS product style
 
-Include sections for:
-- Key Decisions
-- Risks
-- Action Items
-- Business Updates
-- Executive Summary
+The illustration should visually represent this meeting summary:
 
-Content:
 ${summary}
 
-The output should look like a McKinsey or Gartner executive presentation slide, not a futuristic sci-fi UI.
+The output should look like premium AI SaaS marketing artwork, not a dashboard screenshot or infographic.
 `;
 
       const response =
