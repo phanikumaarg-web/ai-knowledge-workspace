@@ -1,3 +1,6 @@
+# Full Updated server.js (Including AI Visual Summary Generation)
+
+````js
 import express from "express";
 import OpenAI from "openai";
 import { toFile } from "openai/uploads";
@@ -459,7 +462,6 @@ app.get(
         });
       }
 
-      // 📚 COMBINE MEETINGS
       const combinedMeetings =
         data
           .map(
@@ -476,9 +478,10 @@ Transcript:
 ${item.content || ""}
 `
           )
-          .join("\n\n");
+          .join("
 
-      // 🤖 GPT ANALYSIS
+");
+
       const prompt = `
 You are an executive AI strategist.
 
@@ -634,7 +637,9 @@ Transcript:
 ${item.content || "No transcript"}
 `
           )
-          .join("\n\n");
+          .join("
+
+");
 
       const digestPrompt = `
 You are an executive AI assistant.
@@ -695,6 +700,81 @@ Include:
   }
 );
 
+// 🖼️ GENERATE VISUAL SUMMARY
+app.post(
+  "/generate-visual-summary",
+
+  async (req, res) => {
+    try {
+      const { summary } =
+        req.body;
+
+      if (!summary) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Summary required",
+          });
+      }
+
+      console.log(
+        "🖼️ Generating visual summary..."
+      );
+
+      const imagePrompt = `
+Create a modern futuristic executive business infographic.
+
+Style:
+- premium SaaS dashboard
+- neon green accents
+- dark enterprise UI
+- AI business intelligence aesthetic
+- charts
+- business icons
+- executive presentation style
+
+Content:
+${summary}
+
+The image should look like an executive AI-generated meeting intelligence dashboard.
+`;
+
+      const response =
+        await openai.images.generate(
+          {
+            model: "gpt-image-1",
+
+            prompt:
+              imagePrompt,
+
+            size: "1024x1024",
+          }
+        );
+
+      const imageBase64 =
+        response.data[0].b64_json;
+
+      res.json({
+        success: true,
+
+        image:
+          `data:image/png;base64,${imageBase64}`,
+      });
+    } catch (err) {
+      console.error(
+        "❌ Image Generation Error:",
+        err
+      );
+
+      res.status(500).json({
+        error:
+          "Failed to generate image",
+      });
+    }
+  }
+);
+
 // 💬 RAG
 app.post(
   "/ask",
@@ -730,7 +810,8 @@ app.post(
 
       const context = data
         .map((d) => d.chunk)
-        .join("\n");
+        .join("
+");
 
       const response =
         await openai.chat.completions.create(
@@ -749,7 +830,11 @@ app.post(
               {
                 role: "user",
 
-                content: `Context:\n${context}\n\nQuestion:\n${question}`,
+                content: `Context:
+${context}
+
+Question:
+${question}`,
               },
             ],
           }
@@ -786,3 +871,12 @@ app.listen(3000, () => {
     "🚀 Server running at http://localhost:3000"
   );
 });
+````
+
+# Then Run
+
+```bash
+git add .
+git commit -m "added visual summary generation"
+git push
+```
