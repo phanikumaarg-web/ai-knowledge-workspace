@@ -1,6 +1,3 @@
-# Full Updated server.js (Including AI Visual Summary Generation)
-
-````js
 import express from "express";
 import OpenAI from "openai";
 import { toFile } from "openai/uploads";
@@ -39,6 +36,7 @@ async function createEmbedding(text) {
       await openai.embeddings.create({
         model:
           "text-embedding-3-small",
+
         input: text,
       });
 
@@ -478,9 +476,7 @@ Transcript:
 ${item.content || ""}
 `
           )
-          .join("
-
-");
+          .join("\n\n");
 
       const prompt = `
 You are an executive AI strategist.
@@ -637,9 +633,7 @@ Transcript:
 ${item.content || "No transcript"}
 `
           )
-          .join("
-
-");
+          .join("\n\n");
 
       const digestPrompt = `
 You are an executive AI assistant.
@@ -741,25 +735,27 @@ The image should look like an executive AI-generated meeting intelligence dashbo
 `;
 
       const response =
-        await openai.images.generate(
-          {
-            model: "gpt-image-1",
+        await openai.images.generate({
+          model: "dall-e-3",
 
-            prompt:
-              imagePrompt,
+          prompt:
+            imagePrompt,
 
-            size: "1024x1024",
-          }
-        );
+          size: "1024x1024",
+        });
 
-      const imageBase64 =
-        response.data[0].b64_json;
+      console.log(
+        "🖼️ OpenAI image response:",
+        response
+      );
+
+      const imageUrl =
+        response.data[0].url;
 
       res.json({
         success: true,
 
-        image:
-          `data:image/png;base64,${imageBase64}`,
+        image: imageUrl,
       });
     } catch (err) {
       console.error(
@@ -810,8 +806,7 @@ app.post(
 
       const context = data
         .map((d) => d.chunk)
-        .join("
-");
+        .join("\n");
 
       const response =
         await openai.chat.completions.create(
@@ -871,12 +866,3 @@ app.listen(3000, () => {
     "🚀 Server running at http://localhost:3000"
   );
 });
-````
-
-# Then Run
-
-```bash
-git add .
-git commit -m "added visual summary generation"
-git push
-```
