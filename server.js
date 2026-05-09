@@ -336,12 +336,22 @@ app.get(
           digest:
             "No meetings processed today.",
           meetingsCount: 0,
+          email:
+            "phanikumaar.g@gmail.com",
         });
       }
 
-      // ✅ DYNAMIC EMAIL
+      // ✅ FIND VALID EMAIL
+      const validMeeting =
+        data.find(
+          (item) =>
+            item.email &&
+            item.email.includes("@")
+        );
+
       const email =
-        data[0]?.email || "";
+        validMeeting?.email ||
+        "phanikumaar.g@gmail.com";
 
       const combinedMeetings =
         data
@@ -472,22 +482,21 @@ app.post("/ask", async (req, res) => {
         ],
       });
 
-      const answer =
-        response.choices[0].message.content;
+    const answer =
+      response.choices[0].message.content;
 
-      res.json({ answer });
-    } catch (err) {
-      console.error(
-        "❌ RAG Error:",
-        err
-      );
+    res.json({ answer });
+  } catch (err) {
+    console.error(
+      "❌ RAG Error:",
+      err
+    );
 
-      res.status(500).json({
-        error: "RAG failed",
-      });
-    }
+    res.status(500).json({
+      error: "RAG failed",
+    });
   }
-);
+});
 
 // 🟢 HEALTH CHECK
 app.get("/", (req, res) => {
