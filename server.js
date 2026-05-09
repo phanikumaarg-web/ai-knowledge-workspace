@@ -32,10 +32,12 @@ const supabase = createClient(
 // 🔹 CREATE EMBEDDING
 async function createEmbedding(text) {
   try {
-    const res = await openai.embeddings.create({
-      model: "text-embedding-3-small",
-      input: text,
-    });
+    const res =
+      await openai.embeddings.create({
+        model:
+          "text-embedding-3-small",
+        input: text,
+      });
 
     return res.data[0].embedding;
   } catch (e) {
@@ -56,23 +58,31 @@ async function extractTasks(note) {
     );
 
     const response =
-      await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content:
-              'Extract action items from the meeting. Return ONLY valid JSON array in this format: [{"task":"...","owner":"...","deadline":"..."}]',
-          },
-          {
-            role: "user",
-            content: note.content,
-          },
-        ],
-      });
+      await openai.chat.completions.create(
+        {
+          model: "gpt-4o-mini",
+
+          messages: [
+            {
+              role: "system",
+
+              content:
+                'Extract action items from the meeting. Return ONLY valid JSON array in this format: [{"task":"...","owner":"...","deadline":"..."}]',
+            },
+
+            {
+              role: "user",
+
+              content:
+                note.content,
+            },
+          ],
+        }
+      );
 
     let raw =
-      response.choices[0].message.content;
+      response.choices[0].message
+        .content;
 
     console.log(
       "🔍 Raw Tasks Response:",
@@ -98,12 +108,18 @@ async function extractTasks(note) {
     }
 
     for (const t of tasks) {
-      await supabase.from("tasks").insert({
-        note_id: note.id,
-        task: t.task || "",
-        owner: t.owner || "",
-        deadline: t.deadline || "",
-      });
+      await supabase
+        .from("tasks")
+        .insert({
+          note_id: note.id,
+
+          task: t.task || "",
+
+          owner: t.owner || "",
+
+          deadline:
+            t.deadline || "",
+        });
     }
 
     return tasks;
@@ -148,23 +164,30 @@ async function processMeetingContent(
 
   // 🤖 SUMMARY
   const summaryRes =
-    await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content:
-            "Summarize this meeting clearly with key decisions and important points.",
-        },
-        {
-          role: "user",
-          content: text,
-        },
-      ],
-    });
+    await openai.chat.completions.create(
+      {
+        model: "gpt-4o-mini",
+
+        messages: [
+          {
+            role: "system",
+
+            content:
+              "Summarize this meeting clearly with key decisions and important points.",
+          },
+
+          {
+            role: "user",
+
+            content: text,
+          },
+        ],
+      }
+    );
 
   const summary =
-    summaryRes.choices[0].message.content;
+    summaryRes.choices[0].message
+      .content;
 
   await supabase
     .from("notes")
@@ -183,7 +206,9 @@ async function processMeetingContent(
     .from("embeddings")
     .insert({
       note_id: note.id,
+
       chunk: text,
+
       embedding,
     });
 
@@ -192,10 +217,11 @@ async function processMeetingContent(
   );
 
   // 📋 TASKS
-  const tasks = await extractTasks({
-    id: note.id,
-    content: text,
-  });
+  const tasks =
+    await extractTasks({
+      id: note.id,
+      content: text,
+    });
 
   console.log(
     "📋 Tasks extracted"
@@ -207,14 +233,19 @@ async function processMeetingContent(
       "https://gandhamphani.app.n8n.cloud/webhook/meeting-summary",
       {
         method: "POST",
+
         headers: {
           "Content-Type":
             "application/json",
         },
+
         body: JSON.stringify({
           email,
+
           summary,
+
           tasks,
+
           transcription: text,
         }),
       }
@@ -240,7 +271,9 @@ async function processMeetingContent(
 // 🎙️ PROCESS AUDIO
 app.post(
   "/process-audio",
+
   upload.single("audio"),
+
   async (req, res) => {
     try {
       console.log(
@@ -248,10 +281,12 @@ app.post(
       );
 
       if (!req.file) {
-        return res.status(400).json({
-          error:
-            "No audio file uploaded",
-        });
+        return res
+          .status(400)
+          .json({
+            error:
+              "No audio file uploaded",
+          });
       }
 
       const email =
@@ -270,13 +305,18 @@ app.post(
               fs.createReadStream(
                 req.file.path
               ),
-              req.file.originalname
+
+              req.file
+                .originalname
             ),
-            model: "gpt-4o-transcribe",
+
+            model:
+              "gpt-4o-transcribe",
           }
         );
 
-      const text = transcription.text;
+      const text =
+        transcription.text;
 
       console.log(
         "📝 Transcription completed"
@@ -292,7 +332,9 @@ app.post(
         "✅ Sending response"
       );
 
-      res.json(responsePayload);
+      res.json(
+        responsePayload
+      );
     } catch (err) {
       console.error(
         "❌ API Error:",
@@ -300,7 +342,8 @@ app.post(
       );
 
       res.status(500).json({
-        error: "Processing failed",
+        error:
+          "Processing failed",
       });
     }
   }
@@ -309,7 +352,9 @@ app.post(
 // 📄 PROCESS TRANSCRIPT
 app.post(
   "/process-transcript",
+
   upload.single("transcript"),
+
   async (req, res) => {
     try {
       console.log(
@@ -317,10 +362,12 @@ app.post(
       );
 
       if (!req.file) {
-        return res.status(400).json({
-          error:
-            "No transcript uploaded",
-        });
+        return res
+          .status(400)
+          .json({
+            error:
+              "No transcript uploaded",
+          });
       }
 
       const email =
@@ -332,10 +379,11 @@ app.post(
       );
 
       // 📄 READ TXT FILE
-      const text = fs.readFileSync(
-        req.file.path,
-        "utf8"
-      );
+      const text =
+        fs.readFileSync(
+          req.file.path,
+          "utf8"
+        );
 
       console.log(
         "📄 Transcript loaded"
@@ -351,7 +399,9 @@ app.post(
         "✅ Transcript processed"
       );
 
-      res.json(responsePayload);
+      res.json(
+        responsePayload
+      );
     } catch (err) {
       console.error(
         "❌ Transcript Error:",
@@ -366,34 +416,86 @@ app.post(
   }
 );
 
+// 📚 GET MEETINGS
+app.get(
+  "/meetings",
+
+  async (req, res) => {
+    try {
+      console.log(
+        "📚 Fetching meetings..."
+      );
+
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("notes")
+        .select("*")
+        .order("id", {
+          ascending: false,
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      res.json({
+        success: true,
+
+        meetings: data,
+      });
+    } catch (err) {
+      console.error(
+        "❌ Meetings Fetch Error:",
+        err
+      );
+
+      res.status(500).json({
+        error:
+          "Failed to fetch meetings",
+      });
+    }
+  }
+);
+
 // 📊 DAILY EXECUTIVE DIGEST
 app.get(
   "/daily-digest",
+
   async (req, res) => {
     try {
       console.log(
         "📊 Generating daily digest..."
       );
 
-      const { data, error } =
-        await supabase
-          .from("notes")
-          .select("*")
-          .order("id", {
-            ascending: false,
-          })
-          .limit(10);
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("notes")
+        .select("*")
+        .order("id", {
+          ascending: false,
+        })
+        .limit(10);
 
       if (error) {
         throw error;
       }
 
-      if (!data || data.length === 0) {
+      if (
+        !data ||
+        data.length === 0
+      ) {
         return res.json({
           success: true,
+
           digest:
             "No meetings processed today.",
+
           meetingsCount: 0,
+
           email:
             "phanikumaar.g@gmail.com",
         });
@@ -413,7 +515,10 @@ app.get(
       const combinedMeetings =
         data
           .map(
-            (item, index) => `
+            (
+              item,
+              index
+            ) => `
 Meeting ${index + 1}
 
 Summary:
@@ -439,26 +544,35 @@ Include:
 `;
 
       const digestResponse =
-        await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "user",
-              content:
-                digestPrompt +
-                combinedMeetings,
-            },
-          ],
-        });
+        await openai.chat.completions.create(
+          {
+            model:
+              "gpt-4o-mini",
+
+            messages: [
+              {
+                role: "user",
+
+                content:
+                  digestPrompt +
+                  combinedMeetings,
+              },
+            ],
+          }
+        );
 
       const digest =
-        digestResponse.choices[0].message
-          .content;
+        digestResponse.choices[0]
+          .message.content;
 
       res.json({
         success: true,
+
         digest,
-        meetingsCount: data.length,
+
+        meetingsCount:
+          data.length,
+
         email,
       });
     } catch (err) {
@@ -476,62 +590,85 @@ Include:
 );
 
 // 💬 RAG
-app.post("/ask", async (req, res) => {
-  try {
-    const { question } = req.body;
+app.post(
+  "/ask",
 
-    const embedding =
-      await createEmbedding(question);
+  async (req, res) => {
+    try {
+      const { question } =
+        req.body;
 
-    const { data, error } =
-      await supabase.rpc(
+      const embedding =
+        await createEmbedding(
+          question
+        );
+
+      const {
+        data,
+        error,
+      } = await supabase.rpc(
         "match_embeddings",
         {
-          query_embedding: embedding,
-          match_threshold: 0.0,
+          query_embedding:
+            embedding,
+
+          match_threshold:
+            0.0,
+
           match_count: 5,
         }
       );
 
-    if (error) {
-      throw error;
-    }
+      if (error) {
+        throw error;
+      }
 
-    const context = data
-      .map((d) => d.chunk)
-      .join("\n");
+      const context = data
+        .map((d) => d.chunk)
+        .join("\n");
 
-    const response =
-      await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
+      const response =
+        await openai.chat.completions.create(
           {
-            role: "system",
-            content:
-              "Answer ONLY using provided context.",
-          },
-          {
-            role: "user",
-            content: `Context:\n${context}\n\nQuestion:\n${question}`,
-          },
-        ],
+            model:
+              "gpt-4o-mini",
+
+            messages: [
+              {
+                role: "system",
+
+                content:
+                  "Answer ONLY using provided context.",
+              },
+
+              {
+                role: "user",
+
+                content: `Context:\n${context}\n\nQuestion:\n${question}`,
+              },
+            ],
+          }
+        );
+
+      const answer =
+        response.choices[0].message
+          .content;
+
+      res.json({
+        answer,
       });
+    } catch (err) {
+      console.error(
+        "❌ RAG Error:",
+        err
+      );
 
-    const answer =
-      response.choices[0].message.content;
-
-    res.json({ answer });
-  } catch (err) {
-    console.error(
-      "❌ RAG Error:",
-      err
-    );
-
-    res.status(500).json({
-      error: "RAG failed",
-    });
+      res.status(500).json({
+        error: "RAG failed",
+      });
+    }
   }
-});
+);
 
 // 🟢 HEALTH CHECK
 app.get("/", (req, res) => {
