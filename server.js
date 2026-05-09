@@ -84,11 +84,6 @@ async function extractTasks(note) {
       response.choices[0].message
         .content;
 
-    console.log(
-      "🔍 Raw Tasks Response:",
-      raw
-    );
-
     raw = raw
       .replace(/```json/g, "")
       .replace(/```/g, "")
@@ -138,7 +133,6 @@ async function processMeetingContent(
   text,
   email
 ) {
-  // 💾 SAVE NOTE
   const {
     data: note,
     error,
@@ -271,9 +265,7 @@ async function processMeetingContent(
 // 🎙️ PROCESS AUDIO
 app.post(
   "/process-audio",
-
   upload.single("audio"),
-
   async (req, res) => {
     try {
       console.log(
@@ -292,12 +284,6 @@ app.post(
       const email =
         req.body.email || "";
 
-      console.log(
-        "📧 User Email:",
-        email
-      );
-
-      // 🔥 TRANSCRIBE
       const transcription =
         await openai.audio.transcriptions.create(
           {
@@ -305,7 +291,6 @@ app.post(
               fs.createReadStream(
                 req.file.path
               ),
-
               req.file
                 .originalname
             ),
@@ -318,19 +303,11 @@ app.post(
       const text =
         transcription.text;
 
-      console.log(
-        "📝 Transcription completed"
-      );
-
       const responsePayload =
         await processMeetingContent(
           text,
           email
         );
-
-      console.log(
-        "✅ Sending response"
-      );
 
       res.json(
         responsePayload
@@ -352,9 +329,7 @@ app.post(
 // 📄 PROCESS TRANSCRIPT
 app.post(
   "/process-transcript",
-
   upload.single("transcript"),
-
   async (req, res) => {
     try {
       console.log(
@@ -373,31 +348,17 @@ app.post(
       const email =
         req.body.email || "";
 
-      console.log(
-        "📧 User Email:",
-        email
-      );
-
-      // 📄 READ TXT FILE
       const text =
         fs.readFileSync(
           req.file.path,
           "utf8"
         );
 
-      console.log(
-        "📄 Transcript loaded"
-      );
-
       const responsePayload =
         await processMeetingContent(
           text,
           email
         );
-
-      console.log(
-        "✅ Transcript processed"
-      );
 
       res.json(
         responsePayload
@@ -419,7 +380,6 @@ app.post(
 // 📚 GET MEETINGS
 app.get(
   "/meetings",
-
   async (req, res) => {
     try {
       console.log(
@@ -442,7 +402,6 @@ app.get(
 
       res.json({
         success: true,
-
         meetings: data,
       });
     } catch (err) {
@@ -459,10 +418,157 @@ app.get(
   }
 );
 
+// 🧠 AI INSIGHTS
+app.get(
+  "/insights",
+  async (req, res) => {
+    try {
+      console.log(
+        "🧠 Generating AI insights..."
+      );
+
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("notes")
+        .select("*")
+        .order("id", {
+          ascending: false,
+        })
+        .limit(20);
+
+      if (error) {
+        throw error;
+      }
+
+      if (
+        !data ||
+        data.length === 0
+      ) {
+        return res.json({
+          success: true,
+
+          insights: {
+            themes: [],
+            risks: [],
+            priorities: [],
+            recommendations:
+              [],
+          },
+        });
+      }
+
+      // 📚 COMBINE MEETINGS
+      const combinedMeetings =
+        data
+          .map(
+            (
+              item,
+              index
+            ) => `
+Meeting ${index + 1}
+
+Summary:
+${item.summary || ""}
+
+Transcript:
+${item.content || ""}
+`
+          )
+          .join("\n\n");
+
+      // 🤖 GPT ANALYSIS
+      const prompt = `
+You are an executive AI strategist.
+
+Analyze these meetings and return ONLY valid JSON.
+
+Return this exact structure:
+
+{
+  "themes": [],
+  "risks": [],
+  "priorities": [],
+  "recommendations": []
+}
+
+Rules:
+- themes = recurring business topics
+- risks = operational/business risks
+- priorities = important focus areas
+- recommendations = leadership recommendations
+
+Keep responses concise.
+`;
+
+      const response =
+        await openai.chat.completions.create(
+          {
+            model:
+              "gpt-4o-mini",
+
+            messages: [
+              {
+                role: "user",
+
+                content:
+                  prompt +
+                  combinedMeetings,
+              },
+            ],
+          }
+        );
+
+      let raw =
+        response.choices[0]
+          .message.content;
+
+      raw = raw
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
+        .trim();
+
+      let insights;
+
+      try {
+        insights = JSON.parse(raw);
+      } catch (parseErr) {
+        console.error(
+          "❌ Insights Parse Error:",
+          parseErr
+        );
+
+        insights = {
+          themes: [],
+          risks: [],
+          priorities: [],
+          recommendations:
+            [],
+        };
+      }
+
+      res.json({
+        success: true,
+        insights,
+      });
+    } catch (err) {
+      console.error(
+        "❌ Insights Error:",
+        err
+      );
+
+      res.status(500).json({
+        error:
+          "Failed to generate insights",
+      });
+    }
+  }
+);
+
 // 📊 DAILY EXECUTIVE DIGEST
 app.get(
   "/daily-digest",
-
   async (req, res) => {
     try {
       console.log(
@@ -592,7 +698,6 @@ Include:
 // 💬 RAG
 app.post(
   "/ask",
-
   async (req, res) => {
     try {
       const { question } =
