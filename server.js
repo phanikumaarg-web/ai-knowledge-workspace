@@ -135,6 +135,15 @@ app.post(
         });
       }
 
+      // ✅ GET EMAIL
+      const email =
+        req.body.email || "";
+
+      console.log(
+        "📧 User Email:",
+        email
+      );
+
       console.log(
         "📁 File received:",
         req.file.originalname
@@ -237,6 +246,35 @@ app.post(
       console.log(
         "📋 Tasks extracted"
       );
+
+      // 🚀 SEND TO N8N
+      try {
+        await fetch(
+          "https://gandhamphani.app.n8n.cloud/webhook/meeting-summary",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              email,
+              summary,
+              tasks,
+              transcription: text,
+            }),
+          }
+        );
+
+        console.log(
+          "✅ n8n webhook triggered"
+        );
+      } catch (webhookErr) {
+        console.error(
+          "❌ n8n Webhook Error:",
+          webhookErr
+        );
+      }
 
       // 🔥 FINAL RESPONSE
       const responsePayload = {
