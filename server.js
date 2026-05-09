@@ -717,21 +717,29 @@ app.post(
       );
 
       const imagePrompt = `
-Create a modern futuristic executive business infographic.
+Create a clean professional executive meeting infographic.
 
 Style:
-- premium SaaS dashboard
-- neon green accents
-- dark enterprise UI
-- AI business intelligence aesthetic
-- charts
-- business icons
-- executive presentation style
+- modern corporate presentation
+- premium consulting slide
+- dark elegant theme
+- green accent colors
+- readable typography
+- organized layout
+- realistic charts and diagrams
+- business infographic style
+
+Include sections for:
+- Key Decisions
+- Risks
+- Action Items
+- Business Updates
+- Executive Summary
 
 Content:
 ${summary}
 
-The image should look like an executive AI-generated meeting intelligence dashboard.
+The output should look like a McKinsey or Gartner executive presentation slide, not a futuristic sci-fi UI.
 `;
 
       const response =
