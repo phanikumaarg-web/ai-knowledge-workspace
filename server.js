@@ -97,7 +97,6 @@ async function extractTasks(note) {
       return [];
     }
 
-    // Save tasks
     for (const t of tasks) {
       await supabase.from("tasks").insert({
         note_id: note.id,
@@ -118,6 +117,126 @@ async function extractTasks(note) {
   }
 }
 
+// 🔥 COMMON AI PIPELINE
+async function processMeetingContent(
+  text,
+  email
+) {
+  // 💾 SAVE NOTE
+  const {
+    data: note,
+    error,
+  } = await supabase
+    .from("notes")
+    .insert({
+      content: text,
+      email: email,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error(
+      "❌ Supabase Insert Error:",
+      error
+    );
+
+    throw error;
+  }
+
+  console.log("💾 Note saved");
+
+  // 🤖 SUMMARY
+  const summaryRes =
+    await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content:
+            "Summarize this meeting clearly with key decisions and important points.",
+        },
+        {
+          role: "user",
+          content: text,
+        },
+      ],
+    });
+
+  const summary =
+    summaryRes.choices[0].message.content;
+
+  await supabase
+    .from("notes")
+    .update({ summary })
+    .eq("id", note.id);
+
+  console.log(
+    "🤖 Summary generated"
+  );
+
+  // 🧠 EMBEDDING
+  const embedding =
+    await createEmbedding(text);
+
+  await supabase
+    .from("embeddings")
+    .insert({
+      note_id: note.id,
+      chunk: text,
+      embedding,
+    });
+
+  console.log(
+    "🧠 Embedding stored"
+  );
+
+  // 📋 TASKS
+  const tasks = await extractTasks({
+    id: note.id,
+    content: text,
+  });
+
+  console.log(
+    "📋 Tasks extracted"
+  );
+
+  // 🚀 N8N
+  try {
+    await fetch(
+      "https://gandhamphani.app.n8n.cloud/webhook/meeting-summary",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          summary,
+          tasks,
+          transcription: text,
+        }),
+      }
+    );
+
+    console.log(
+      "✅ n8n webhook triggered"
+    );
+  } catch (webhookErr) {
+    console.error(
+      "❌ n8n Webhook Error:",
+      webhookErr
+    );
+  }
+
+  return {
+    transcription: text,
+    summary,
+    tasks,
+  };
+}
+
 // 🎙️ PROCESS AUDIO
 app.post(
   "/process-audio",
@@ -135,7 +254,6 @@ app.post(
         });
       }
 
-      // ✅ GET EMAIL
       const email =
         req.body.email || "";
 
@@ -144,12 +262,7 @@ app.post(
         email
       );
 
-      console.log(
-        "📁 File received:",
-        req.file.originalname
-      );
-
-      // 🔥 TRANSCRIBE AUDIO
+      // 🔥 TRANSCRIBE
       const transcription =
         await openai.audio.transcriptions.create(
           {
@@ -169,124 +282,14 @@ app.post(
         "📝 Transcription completed"
       );
 
-      // 💾 SAVE NOTE + EMAIL
-      const {
-        data: note,
-        error,
-      } = await supabase
-        .from("notes")
-        .insert({
-          content: text,
-          email: email,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error(
-          "❌ Supabase Insert Error:",
-          error
+      const responsePayload =
+        await processMeetingContent(
+          text,
+          email
         );
 
-        throw error;
-      }
-
-      console.log("💾 Note saved");
-
-      // 🤖 GENERATE SUMMARY
-      const summaryRes =
-        await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content:
-                "Summarize this meeting clearly with key decisions and important points.",
-            },
-            {
-              role: "user",
-              content: text,
-            },
-          ],
-        });
-
-      const summary =
-        summaryRes.choices[0].message.content;
-
-      await supabase
-        .from("notes")
-        .update({ summary })
-        .eq("id", note.id);
-
       console.log(
-        "🤖 Summary generated"
-      );
-
-      // 🧠 CREATE EMBEDDING
-      const embedding =
-        await createEmbedding(text);
-
-      await supabase
-        .from("embeddings")
-        .insert({
-          note_id: note.id,
-          chunk: text,
-          embedding,
-        });
-
-      console.log(
-        "🧠 Embedding stored"
-      );
-
-      // 📋 EXTRACT TASKS
-      const tasks = await extractTasks({
-        id: note.id,
-        content: text,
-      });
-
-      console.log(
-        "📋 Tasks extracted"
-      );
-
-      // 🚀 SEND TO N8N
-      try {
-        await fetch(
-          "https://gandhamphani.app.n8n.cloud/webhook/meeting-summary",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              email,
-              summary,
-              tasks,
-              transcription: text,
-            }),
-          }
-        );
-
-        console.log(
-          "✅ n8n webhook triggered"
-        );
-      } catch (webhookErr) {
-        console.error(
-          "❌ n8n Webhook Error:",
-          webhookErr
-        );
-      }
-
-      // 🔥 FINAL RESPONSE
-      const responsePayload = {
-        transcription: text,
-        summary,
-        tasks,
-      };
-
-      console.log(
-        "✅ Sending response:",
-        responsePayload
+        "✅ Sending response"
       );
 
       res.json(responsePayload);
@@ -298,6 +301,66 @@ app.post(
 
       res.status(500).json({
         error: "Processing failed",
+      });
+    }
+  }
+);
+
+// 📄 PROCESS TRANSCRIPT
+app.post(
+  "/process-transcript",
+  upload.single("transcript"),
+  async (req, res) => {
+    try {
+      console.log(
+        "📄 Processing transcript..."
+      );
+
+      if (!req.file) {
+        return res.status(400).json({
+          error:
+            "No transcript uploaded",
+        });
+      }
+
+      const email =
+        req.body.email || "";
+
+      console.log(
+        "📧 User Email:",
+        email
+      );
+
+      // 📄 READ TXT FILE
+      const text = fs.readFileSync(
+        req.file.path,
+        "utf8"
+      );
+
+      console.log(
+        "📄 Transcript loaded"
+      );
+
+      const responsePayload =
+        await processMeetingContent(
+          text,
+          email
+        );
+
+      console.log(
+        "✅ Transcript processed"
+      );
+
+      res.json(responsePayload);
+    } catch (err) {
+      console.error(
+        "❌ Transcript Error:",
+        err
+      );
+
+      res.status(500).json({
+        error:
+          "Transcript processing failed",
       });
     }
   }
@@ -322,11 +385,6 @@ app.get(
           .limit(10);
 
       if (error) {
-        console.error(
-          "❌ Supabase Fetch Error:",
-          error
-        );
-
         throw error;
       }
 
@@ -341,7 +399,6 @@ app.get(
         });
       }
 
-      // ✅ FIND VALID EMAIL
       const validMeeting =
         data.find(
           (item) =>
@@ -379,9 +436,6 @@ Include:
 - Key risks/issues
 - Important decisions
 - Executive insights
-
-Meetings:
-${combinedMeetings}
 `;
 
       const digestResponse =
@@ -390,7 +444,9 @@ ${combinedMeetings}
           messages: [
             {
               role: "user",
-              content: digestPrompt,
+              content:
+                digestPrompt +
+                combinedMeetings,
             },
           ],
         });
@@ -398,10 +454,6 @@ ${combinedMeetings}
       const digest =
         digestResponse.choices[0].message
           .content;
-
-      console.log(
-        "✅ Daily digest generated"
-      );
 
       res.json({
         success: true,
@@ -423,21 +475,14 @@ ${combinedMeetings}
   }
 );
 
-// 💬 RAG QUESTION ANSWERING
+// 💬 RAG
 app.post("/ask", async (req, res) => {
   try {
     const { question } = req.body;
 
-    console.log(
-      "❓ Question received:",
-      question
-    );
-
-    // Create embedding
     const embedding =
       await createEmbedding(question);
 
-    // Retrieve similar notes
     const { data, error } =
       await supabase.rpc(
         "match_embeddings",
@@ -449,11 +494,6 @@ app.post("/ask", async (req, res) => {
       );
 
     if (error) {
-      console.error(
-        "❌ Match Error:",
-        error
-      );
-
       throw error;
     }
 
@@ -461,11 +501,6 @@ app.post("/ask", async (req, res) => {
       .map((d) => d.chunk)
       .join("\n");
 
-    console.log(
-      "📚 Context Retrieved"
-    );
-
-    // Ask AI using context
     const response =
       await openai.chat.completions.create({
         model: "gpt-4o-mini",
@@ -473,7 +508,7 @@ app.post("/ask", async (req, res) => {
           {
             role: "system",
             content:
-              "Answer ONLY using the provided context. If answer not found, say you don't know.",
+              "Answer ONLY using provided context.",
           },
           {
             role: "user",
