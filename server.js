@@ -302,6 +302,111 @@ app.post(
   }
 );
 
+// 📊 DAILY EXECUTIVE DIGEST
+app.get(
+  "/daily-digest",
+  async (req, res) => {
+    try {
+      console.log(
+        "📊 Generating daily digest..."
+      );
+
+      const { data, error } =
+        await supabase
+          .from("notes")
+          .select("*")
+          .order("id", {
+            ascending: false,
+          })
+          .limit(10);
+
+      if (error) {
+        console.error(
+          "❌ Supabase Fetch Error:",
+          error
+        );
+
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        return res.json({
+          success: true,
+          digest:
+            "No meetings processed today.",
+          meetingsCount: 0,
+        });
+      }
+
+      const combinedMeetings =
+        data
+          .map(
+            (item, index) => `
+Meeting ${index + 1}
+
+Summary:
+${item.summary || "No summary"}
+
+Transcript:
+${item.content || "No transcript"}
+`
+          )
+          .join("\n\n");
+
+      const digestPrompt = `
+You are an executive AI assistant.
+
+Create a professional executive digest from these meetings.
+
+Include:
+- Overall business summary
+- Major action items
+- Key risks/issues
+- Important decisions
+- Executive insights
+
+Meetings:
+${combinedMeetings}
+`;
+
+      const digestResponse =
+        await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "user",
+              content: digestPrompt,
+            },
+          ],
+        });
+
+      const digest =
+        digestResponse.choices[0].message
+          .content;
+
+      console.log(
+        "✅ Daily digest generated"
+      );
+
+      res.json({
+        success: true,
+        digest,
+        meetingsCount: data.length,
+      });
+    } catch (err) {
+      console.error(
+        "❌ Daily Digest Error:",
+        err
+      );
+
+      res.status(500).json({
+        error:
+          "Failed to generate daily digest",
+      });
+    }
+  }
+);
+
 // 💬 RAG QUESTION ANSWERING
 app.post("/ask", async (req, res) => {
   try {
