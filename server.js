@@ -169,7 +169,7 @@ app.post(
         "📝 Transcription completed"
       );
 
-      // 💾 SAVE NOTE
+      // 💾 SAVE NOTE + EMAIL
       const {
         data: note,
         error,
@@ -177,6 +177,7 @@ app.post(
         .from("notes")
         .insert({
           content: text,
+          email: email,
         })
         .select()
         .single();
@@ -338,6 +339,10 @@ app.get(
         });
       }
 
+      // ✅ DYNAMIC EMAIL
+      const email =
+        data[0]?.email || "";
+
       const combinedMeetings =
         data
           .map(
@@ -392,6 +397,7 @@ ${combinedMeetings}
         success: true,
         digest,
         meetingsCount: data.length,
+        email,
       });
     } catch (err) {
       console.error(
@@ -466,21 +472,22 @@ app.post("/ask", async (req, res) => {
         ],
       });
 
-    const answer =
-      response.choices[0].message.content;
+      const answer =
+        response.choices[0].message.content;
 
-    res.json({ answer });
-  } catch (err) {
-    console.error(
-      "❌ RAG Error:",
-      err
-    );
+      res.json({ answer });
+    } catch (err) {
+      console.error(
+        "❌ RAG Error:",
+        err
+      );
 
-    res.status(500).json({
-      error: "RAG failed",
-    });
+      res.status(500).json({
+        error: "RAG failed",
+      });
+    }
   }
-});
+);
 
 // 🟢 HEALTH CHECK
 app.get("/", (req, res) => {
